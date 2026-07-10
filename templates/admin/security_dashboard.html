@@ -1,0 +1,520 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  .sec-wrap { padding: 24px; }
+
+  /* ── day switcher ── */
+  .day-switcher {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .day-switcher a {
+    padding: 6px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    background: #fff;
+    transition: all .15s;
+  }
+  .day-switcher a.active,
+  .day-switcher a:hover {
+    background: #1d4640;
+    color: #fff;
+    border-color: #1d4640;
+  }
+
+  /* ── stat cards ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2,1fr); } }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    border: solid 1px #ccc;
+  }
+
+  .stat-card .label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: #111827; }
+
+  /* ── chart cards ── */
+  .chart-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) { .chart-grid-2 { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.07);
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 16px;
+  }
+  .chart-box { width: 100%; height: 260px; display: block; }
+  .chart-box-tall { width: 100%; height: 320px; display: block; }
+  .chart-card { overflow: hidden; }
+
+  /* ── suspicious table ── */
+  .sus-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  /* ── user filter ── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .user-select-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 360px;
+  }
+  .user-select-wrap input {
+    width: 100%;
+    padding: 7px 36px 7px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #374151;
+    background: #fff;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .user-select-wrap input:focus { border-color: #1d4640; }
+  .user-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+  }
+  .user-dropdown.open { display: block; }
+  .user-dropdown li {
+    list-style: none;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+  }
+  .user-dropdown li:hover,
+  .user-dropdown li.active-item { background: #f0fdf4; color: #1d4640; font-weight: 500; }
+  .clear-user {
+    padding: 7px 14px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #ef4444;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: none;
+  }
+  .clear-user.visible { display: inline-block; }
+  .user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 13px;
+    color: #1d4640;
+    font-weight: 500;
+  }
+  .sus-table th { text-align: left; padding: 8px 12px; color: #6b7280; font-weight: 500; border-bottom: 1px solid #f3f4f6; font-size: 11px; text-transform: uppercase; }
+  .sus-table td { padding: 10px 12px; border-bottom: 1px solid #f9fafb; color: #374151; }
+  .sus-table tr:last-child td { border-bottom: none; }
+  .badge-red { display: inline-block; background: #fef2f2; color: #ef4444; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+  .empty-state { text-align: center; color: #9ca3af; padding: 32px; font-size: 14px; }
+</style>
+
+<div class="sec-wrap">
+  <!-- day switcher -->
+  <div class="day-switcher">
+    <a href="?days=7{% if user_email %}&user={{ user_email }}{% endif %}"  class="{% if days == 7  %}active{% endif %}">7д</a>
+    <a href="?days=30{% if user_email %}&user={{ user_email }}{% endif %}" class="{% if days == 30 %}active{% endif %}">30д</a>
+    <a href="?days=90{% if user_email %}&user={{ user_email }}{% endif %}" class="{% if days == 90 %}active{% endif %}">90д</a>
+  </div>
+
+  <!-- user filter -->
+  <div class="filter-bar">
+    <div class="user-select-wrap">
+      <input type="text" id="userSearch" placeholder="Фільтрувати…" autocomplete="off" value="{{ user_email }}">
+      <ul class="user-dropdown" id="userDropdown"></ul>
+    </div>
+    <button class="clear-user {% if user_email %}visible{% endif %}" id="clearUser" onclick="clearUserFilter()">✕ Clear filter</button>
+    {% if user_email %}
+    <span class="user-badge">{{ user_email }}</span>
+    {% endif %}
+  </div>
+
+  <!-- stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card green">
+      <div class="label">Входи</div>
+      <div class="value">{{ total_logins }}</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="label">Виходи</div>
+      <div class="value">{{ total_logouts }}</div>
+    </div>
+    <div class="stat-card red">
+      <div class="label">Невдалі спроби</div>
+      <div class="value">{{ total_failed }}</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="label">Унікальні IP</div>
+      <div class="value">{{ unique_ips }}</div>
+    </div>
+  </div>
+
+  <!-- line chart (full width) -->
+  <div class="chart-grid-2">
+    <div class="chart-card full">
+      <h3>Активність авторизації</h3>
+      <div id="lineChart" class="chart-box-tall"></div>
+    </div>
+  </div>
+
+  <!-- IP bar + active users bar -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <h3>Невдалі спроби по IP</h3>
+      <div id="ipChart" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Найактивніші користувачі</h3>
+      <div id="userChart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <!-- heatmap + suspicious -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <h3>Погодинна сітка</h3>
+      <div id="heatmapChart" class="chart-box-tall"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Підозрілі IP (5+ невдало)</h3>
+      {% if suspicious_list %}
+      <table class="sus-table">
+        <thead>
+          <tr>
+            <th>IP Address</th>
+            <th>Пошта</th>
+            <th>К-сть спроб</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in suspicious_list %}
+          <tr>
+            <td>{{ s.ip_address|default:"unknown" }}</td>
+            <td>{{ s.email }}</td>
+            <td><span class="badge-red">{{ s.attempts }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">Немає підозрілої активності</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- user summary table -->
+  <div class="chart-card full" style="margin-top:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="margin:0;">Усі користувачі</h3>
+      <span style="font-size:12px;color:#6b7280;">{{ user_rows|length }} user{{ user_rows|length|pluralize }}</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="sus-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th style="text-align:center;">Входи</th>
+            <th style="text-align:center;">Виходи</th>
+            <th style="text-align:center;">Невдало</th>
+            <th>IPs Used</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in user_rows %}
+          <tr {% if user_email == row.email %}style="background:#f0fdf4;"{% endif %}>
+            <td style="font-weight:500;">{{ row.email }}</td>
+            <td style="text-align:center;">
+              <span style="color:#10b981;font-weight:600;">{{ row.logins }}</span>
+            </td>
+            <td style="text-align:center;">
+              <span style="color:#3b82f6;font-weight:600;">{{ row.logouts }}</span>
+            </td>
+            <td style="text-align:center;">
+              {% if row.failed %}
+                <span class="badge-red">{{ row.failed }}</span>
+              {% else %}
+                <span style="color:#9ca3af;">0</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                {% for ip in row.ips %}
+                <span style="background:#f3f4f6;border-radius:4px;padding:2px 7px;font-size:11px;color:#374151;font-family:monospace;">{{ ip }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td>
+              {% if user_email == row.email %}
+                <a href="?days={{ days }}" style="font-size:12px;color:#ef4444;text-decoration:none;">✕ очистити</a>
+              {% else %}
+                <a href="?days={{ days }}&user={{ row.email }}" style="font-size:12px;color:#1d4640;text-decoration:none;font-weight:500;">фільтр →</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty-state">Немає активності за цей період</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+// ── user filter ───────────────────────────────────────────────────────────
+const ALL_EMAILS = {{ all_emails_json|safe }};
+
+function selectUser(encodedEmail) {
+  const email = decodeURIComponent(encodedEmail);
+  const days = new URLSearchParams(window.location.search).get('days') || 7;
+  window.location.href = `?days=${days}&user=${encodeURIComponent(email)}`;
+}
+
+function clearUserFilter() {
+  const days = new URLSearchParams(window.location.search).get('days') || 7;
+  window.location.href = `?days=${days}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+const COLORS = {
+  green:  '#10b981',
+  blue:   '#3b82f6',
+  red:    '#ef4444',
+  purple: '#8b5cf6',
+  teal:   '#1d4640',
+};
+
+const axisStyle = {
+  axisLine:  { lineStyle: { color: '#e5e7eb' } },
+  axisTick:  { show: false },
+  axisLabel: { color: '#6b7280', fontSize: 12 },
+  splitLine: { lineStyle: { type: 'dashed', color: '#f3f4f6' } },
+};
+
+// ── 1. Line chart ──────────────────────────────────────────────────────────
+const lineChart = echarts.init(document.getElementById('lineChart'));
+lineChart.setOption({
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['Login', 'Logout', 'Failed'], bottom: 0, textStyle: { fontSize: 12 } },
+  grid: { left: '3%', right: '4%', bottom: '12%', top: '5%', containLabel: true },
+  xAxis: {
+    type: 'category',
+    boundaryGap: false,
+    data: {{ labels|safe }},
+    ...axisStyle,
+  },
+  yAxis: { type: 'value', minInterval: 1, ...axisStyle },
+  series: [
+    {
+      name: 'Login', type: 'line', smooth: true,
+      symbol: 'circle', symbolSize: 6,
+      lineStyle: { width: 3, color: COLORS.green },
+      itemStyle: { color: COLORS.green },
+      areaStyle: { color: COLORS.green, opacity: 0.08 },
+      emphasis: { focus: 'series', itemStyle: { borderWidth: 2, borderColor: '#fff' } },
+      data: {{ login_data|safe }},
+    },
+    {
+      name: 'Logout', type: 'line', smooth: true,
+      symbol: 'circle', symbolSize: 6,
+      lineStyle: { width: 3, color: COLORS.blue },
+      itemStyle: { color: COLORS.blue },
+      areaStyle: { color: COLORS.blue, opacity: 0.08 },
+      emphasis: { focus: 'series', itemStyle: { borderWidth: 2, borderColor: '#fff' } },
+      data: {{ logout_data|safe }},
+    },
+    {
+      name: 'Failed', type: 'line', smooth: true,
+      symbol: 'circle', symbolSize: 6,
+      lineStyle: { width: 3, color: COLORS.red },
+      itemStyle: { color: COLORS.red },
+      areaStyle: { color: COLORS.red, opacity: 0.08 },
+      emphasis: { focus: 'series', itemStyle: { borderWidth: 2, borderColor: '#fff' } },
+      data: {{ failed_data|safe }},
+    },
+  ],
+});
+
+// ── 2. Failed by IP (horizontal bar) ──────────────────────────────────────
+const ipChart = echarts.init(document.getElementById('ipChart'));
+ipChart.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: '3%', right: '8%', bottom: '3%', top: '3%', containLabel: true },
+  xAxis: { type: 'value', minInterval: 1, ...axisStyle },
+  yAxis: {
+    type: 'category',
+    data: {{ ip_labels|safe }},
+    axisLabel: { color: '#6b7280', fontSize: 11 },
+    axisLine: { lineStyle: { color: '#e5e7eb' } },
+    axisTick: { show: false },
+  },
+  series: [{
+    type: 'bar',
+    data: {{ ip_counts|safe }},
+    itemStyle: { color: COLORS.red, borderRadius: [0, 4, 4, 0] },
+    barMaxWidth: 28,
+  }],
+});
+
+// ── 3. Active users (horizontal bar) ──────────────────────────────────────
+const userChart = echarts.init(document.getElementById('userChart'));
+userChart.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: '3%', right: '8%', bottom: '3%', top: '3%', containLabel: true },
+  xAxis: { type: 'value', minInterval: 1, ...axisStyle },
+  yAxis: {
+    type: 'category',
+    data: {{ user_labels|safe }},
+    axisLabel: { color: '#6b7280', fontSize: 11 },
+    axisLine: { lineStyle: { color: '#e5e7eb' } },
+    axisTick: { show: false },
+  },
+  series: [{
+    type: 'bar',
+    data: {{ user_counts|safe }},
+    itemStyle: { color: COLORS.green, borderRadius: [0, 4, 4, 0] },
+    barMaxWidth: 28,
+  }],
+});
+
+// ── 4. Heatmap ─────────────────────────────────────────────────────────────
+const heatmapRaw = {{ heatmap|safe }};
+const days7  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const hours  = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
+
+const heatData = [];
+let maxVal = 0;
+heatmapRaw.forEach((row, di) => {
+  row.forEach((val, hi) => {
+    heatData.push([hi, di, val]);
+    if (val > maxVal) maxVal = val;
+  });
+});
+
+const heatChart = echarts.init(document.getElementById('heatmapChart'));
+heatChart.setOption({
+  tooltip: {
+    formatter: p => `${days7[p.data[1]]} ${hours[p.data[0]]}<br/>Events: <b>${p.data[2]}</b>`
+  },
+  grid: { left: '3%', right: '4%', bottom: '12%', top: '3%', containLabel: true },
+  xAxis: {
+    type: 'category', data: hours,
+    splitArea: { show: true },
+    axisLabel: { color: '#6b7280', fontSize: 10, formatter: v => v.slice(0,2), interval: 1 },
+    axisLine: { lineStyle: { color: '#e5e7eb' } },
+    axisTick: { show: false },
+  },
+  yAxis: {
+    type: 'category', data: days7,
+    splitArea: { show: true },
+    axisLabel: { color: '#6b7280', fontSize: 12 },
+    axisLine: { lineStyle: { color: '#e5e7eb' } },
+    axisTick: { show: false },
+  },
+  visualMap: {
+    min: 0, max: maxVal || 1,
+    calculable: true,
+    orient: 'horizontal',
+    left: 'center', bottom: 0,
+    inRange: { color: ['#f0fdf4', '#10b981', '#1d4640'] },
+    textStyle: { color: '#6b7280', fontSize: 11 },
+  },
+  series: [{
+    type: 'heatmap',
+    data: heatData,
+    label: { show: false },
+    emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,.2)' } },
+  }],
+});
+
+// ── user search input wiring ──────────────────────────────────────────────
+const searchInput = document.getElementById('userSearch');
+const dropdown    = document.getElementById('userDropdown');
+
+function buildDropdown(query) {
+  const q = query.toLowerCase();
+  const matches = ALL_EMAILS.filter(e => e.toLowerCase().includes(q)).slice(0, 20);
+  dropdown.innerHTML = matches.map(e =>
+    `<li onclick="selectUser('${encodeURIComponent(e)}')">${e}</li>`
+  ).join('');
+  dropdown.classList.toggle('open', matches.length > 0 && query.length > 0);
+}
+
+searchInput.addEventListener('input', e => buildDropdown(e.target.value));
+searchInput.addEventListener('focus', e => buildDropdown(e.target.value));
+document.addEventListener('click', e => {
+  if (!e.target.closest('.user-select-wrap')) dropdown.classList.remove('open');
+});
+
+// highlight bar for selected user in user chart
+{% if user_email %}
+userChart.setOption({
+  series: [{
+    data: {{ user_counts|safe }}.map((v, i) => ({
+      value: v,
+      itemStyle: {
+        color: {{ user_labels|safe }}[i] === '{{ user_email }}' ? '#1d4640' : '#10b981',
+        borderRadius: [0, 4, 4, 0],
+      }
+    }))
+  }]
+});
+{% endif %}
+
+// ── resize all on window resize ───────────────────────────────────────────
+const allCharts = [lineChart, ipChart, userChart, heatChart];
+window.addEventListener('resize', () => allCharts.forEach(c => c && c.resize()));
+// force resize once after render
+setTimeout(() => allCharts.forEach(c => c && c.resize()), 100);
+
+}); // end DOMContentLoaded
+</script>
+{% endblock %}

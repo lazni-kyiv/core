@@ -1,0 +1,339 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  .sec-wrap { padding: 24px; }
+
+  .day-switcher { display:flex; gap:6px; margin-bottom:24px; }
+  .day-switcher a {
+    padding:6px 18px; border-radius:6px; font-size:13px; font-weight:500;
+    text-decoration:none; border:1px solid #e5e7eb; color:#374151; background:#fff;
+  }
+  .day-switcher a.active, .day-switcher a:hover {
+    background:#1d4640; color:#fff; border-color:#1d4640;
+  }
+
+  .stat-grid {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;
+  }
+  @media(max-width:900px){ .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+  .stat-card {
+    background:#fff; border-radius:12px; padding:20px 24px; border:1px solid #e5e7eb;
+  }
+  .stat-card .label {
+    font-size:12px; color:#6b7280; text-transform:uppercase;
+    letter-spacing:.05em; margin-bottom:6px;
+  }
+  .stat-card .value { font-size:28px; font-weight:700; color:#111827; }
+  .stat-card .sub   { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+  .chart-grid-2 {
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;
+  }
+  @media(max-width:900px){ .chart-grid-2{ grid-template-columns:1fr; } }
+  .chart-card {
+    background:#fff; border-radius:12px; padding:20px 24px; border:1px solid #e5e7eb;
+  }
+  .chart-card.full { grid-column:1 / -1; }
+  .chart-card h3 { font-size:14px; font-weight:600; color:#111827; margin:0 0 16px; }
+  .chart-box      { width:100%; height:260px; }
+  .chart-box-tall { width:100%; height:320px; }
+
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th {
+    text-align:left; padding:8px 12px; color:#6b7280; font-weight:500;
+    border-bottom:1px solid #f3f4f6; font-size:11px; text-transform:uppercase;
+  }
+  .data-table td { padding:10px 12px; border-bottom:1px solid #f9fafb; color:#374151; }
+  .data-table tr:last-child td { border-bottom:none; }
+  .badge {
+    display:inline-block; border-radius:999px; padding:2px 10px;
+    font-size:12px; font-weight:500;
+  }
+  .badge-green  { background:#E1F5EE; color:#085041; }
+  .badge-blue   { background:#EEF2FF; color:#3730A3; }
+  .badge-yellow { background:#FEF9C3; color:#854D0E; }
+  .badge-orange { background:#FAEEDA; color:#633806; }
+  .badge-red    { background:#FCEBEB; color:#791F1F; }
+  .empty-state  { text-align:center; color:#9ca3af; padding:32px; font-size:14px; }
+  .mono         { font-family:monospace; font-size:12px; background:#f3f4f6; padding:2px 7px; border-radius:4px; }
+</style>
+
+<div class="sec-wrap">
+
+  <!-- day switcher -->
+  <div class="day-switcher">
+    <a href="?days=1"  class="{% if days == 1  %}active{% endif %}">24h</a>
+    <a href="?days=7"  class="{% if days == 7  %}active{% endif %}">7д</a>
+    <a href="?days=30" class="{% if days == 30 %}active{% endif %}">30д</a>
+    <a href="?days=90" class="{% if days == 90 %}active{% endif %}">90д</a>
+  </div>
+
+  <!-- stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">Всього запитів</div>
+      <div class="value">{{ total_requests }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Помилки</div>
+      <div class="value" style="color:#ef4444;">{{ error_count }}</div>
+      <div class="sub">{{ error_rate }}% від всіх</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Середній час</div>
+      <div class="value">{{ avg_response_time }}<span style="font-size:14px;font-weight:400;color:#6b7280;">ms</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Повільних (&gt;1s)</div>
+      <div class="value" style="color:#f59e0b;">{{ slow_requests }}</div>
+    </div>
+  </div>
+
+  <!-- main line chart -->
+  <div class="chart-grid-2">
+    <div class="chart-card full">
+      <h3>Запити по днях</h3>
+      <div id="lineChart" class="chart-box-tall"></div>
+    </div>
+  </div>
+
+  <!-- by hour + method pie -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <h3>Запити по годинах (24h)</h3>
+      <div id="hourChart" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Методи</h3>
+      <div id="methodChart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <!-- status breakdown + top IPs -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <h3>Статус коди</h3>
+      <div id="statusChart" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Топ IP адреси</h3>
+      {% if top_ips %}
+      <table class="data-table">
+        <thead><tr><th>IP</th><th>Запити</th></tr></thead>
+        <tbody>
+          {% for row in top_ips %}
+          <tr>
+            <td><span class="mono">{{ row.ip_address|default:"—" }}</span></td>
+            <td><strong>{{ row.count }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">Немає даних</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- top paths + slowest -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <h3>Топ ендпоінти</h3>
+      {% if top_paths %}
+      <table class="data-table">
+        <thead><tr><th>Path</th><th>Запити</th><th>Помилки</th><th>Avg ms</th></tr></thead>
+        <tbody>
+          {% for row in top_paths %}
+          <tr>
+            <td><span class="mono">{{ row.path }}</span></td>
+            <td><strong>{{ row.count }}</strong></td>
+            <td>
+              {% if row.errors %}
+                <span class="badge badge-red">{{ row.errors }}</span>
+              {% else %}
+                <span style="color:#9ca3af;">0</span>
+              {% endif %}
+            </td>
+            <td style="color:{% if row.avg_ms > 1000 %}#ef4444{% elif row.avg_ms > 300 %}#f59e0b{% else %}#10b981{% endif %};">
+              {{ row.avg_ms|floatformat:0 }}ms
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">Немає даних</div>
+      {% endif %}
+    </div>
+
+    <div class="chart-card">
+      <h3>Найповільніші ендпоінти</h3>
+      {% if slowest %}
+      <table class="data-table">
+        <thead><tr><th>Path</th><th>Avg ms</th><th>К-сть</th></tr></thead>
+        <tbody>
+          {% for row in slowest %}
+          <tr>
+            <td><span class="mono">{{ row.path }}</span></td>
+            <td style="color:{% if row.avg_ms > 1000 %}#ef4444{% elif row.avg_ms > 300 %}#f59e0b{% else %}#10b981{% endif %};font-weight:600;">
+              {{ row.avg_ms|floatformat:0 }}ms
+            </td>
+            <td>{{ row.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">Немає даних</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- top errors -->
+  <div class="chart-card full" style="margin-bottom:24px;">
+    <h3>Топ помилки</h3>
+    {% if top_errors %}
+    <table class="data-table">
+      <thead><tr><th>Path</th><th>Status</th><th>К-сть</th></tr></thead>
+      <tbody>
+        {% for row in top_errors %}
+        <tr>
+          <td><span class="mono">{{ row.path }}</span></td>
+          <td>
+            <span class="badge {% if row.status_code >= 500 %}badge-red{% else %}badge-orange{% endif %}">
+              {{ row.status_code }}
+            </span>
+          </td>
+          <td><strong>{{ row.count }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">Немає помилок за цей період 🎉</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const COLORS = {
+    green:  '#10b981',
+    blue:   '#3b82f6',
+    red:    '#ef4444',
+    yellow: '#f59e0b',
+    teal:   '#1d4640',
+  };
+  const axisStyle = {
+    axisLine:  { lineStyle: { color: '#e5e7eb' } },
+    axisTick:  { show: false },
+    axisLabel: { color: '#6b7280', fontSize: 12 },
+    splitLine: { lineStyle: { type: 'dashed', color: '#f3f4f6' } },
+  };
+
+  // ── 1. Line chart by day ──────────────────────────────────────────────────
+  echarts.init(document.getElementById('lineChart')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Всього', 'Помилки', 'Повільні'], bottom: 0, textStyle: { fontSize: 12 } },
+    grid: { left: '3%', right: '4%', bottom: '12%', top: '5%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: {{ labels|safe }}, ...axisStyle },
+    yAxis: { type: 'value', minInterval: 1, ...axisStyle },
+    series: [
+      {
+        name: 'Всього', type: 'line', smooth: true,
+        symbol: 'circle', symbolSize: 6,
+        lineStyle: { width: 3, color: COLORS.teal },
+        itemStyle: { color: COLORS.teal },
+        areaStyle: { color: COLORS.teal, opacity: 0.07 },
+        data: {{ total_data|safe }},
+      },
+      {
+        name: 'Помилки', type: 'line', smooth: true,
+        symbol: 'circle', symbolSize: 6,
+        lineStyle: { width: 3, color: COLORS.red },
+        itemStyle: { color: COLORS.red },
+        areaStyle: { color: COLORS.red, opacity: 0.07 },
+        data: {{ error_data|safe }},
+      },
+      {
+        name: 'Повільні', type: 'line', smooth: true,
+        symbol: 'circle', symbolSize: 6,
+        lineStyle: { width: 3, color: COLORS.yellow },
+        itemStyle: { color: COLORS.yellow },
+        areaStyle: { color: COLORS.yellow, opacity: 0.07 },
+        data: {{ slow_data|safe }},
+      },
+    ],
+  });
+
+  // ── 2. By hour bar ────────────────────────────────────────────────────────
+  echarts.init(document.getElementById('hourChart')).setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '3%', containLabel: true },
+    xAxis: { type: 'category', data: {{ hour_labels|safe }}, ...axisStyle,
+      axisLabel: { color: '#6b7280', fontSize: 10, interval: 2 } },
+    yAxis: { type: 'value', minInterval: 1, ...axisStyle },
+    series: [{
+      type: 'bar',
+      data: {{ hour_data|safe }},
+      itemStyle: { color: COLORS.teal, borderRadius: [4, 4, 0, 0] },
+      barMaxWidth: 32,
+    }],
+  });
+
+  // ── 3. Method pie ─────────────────────────────────────────────────────────
+  const methodColors = {
+    GET: COLORS.green, POST: COLORS.blue, PUT: COLORS.yellow,
+    PATCH: '#f59e0b', DELETE: COLORS.red,
+  };
+  const methodLabels = {{ method_labels|safe }};
+  const methodCounts = {{ method_counts|safe }};
+  echarts.init(document.getElementById('methodChart')).setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: { bottom: 0, textStyle: { fontSize: 12 } },
+    series: [{
+      type: 'pie', radius: ['40%', '70%'],
+      center: ['50%', '45%'],
+      data: methodLabels.map((m, i) => ({
+        name: m, value: methodCounts[i],
+        itemStyle: { color: methodColors[m] || '#8b5cf6' },
+      })),
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+    }],
+  });
+
+  // ── 4. Status bar ─────────────────────────────────────────────────────────
+  const statusData = {{ status_groups|safe }};
+  echarts.init(document.getElementById('statusChart')).setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '8%', bottom: '3%', top: '3%', containLabel: true },
+    xAxis: { type: 'value', minInterval: 1, ...axisStyle },
+    yAxis: {
+      type: 'category',
+      data: Object.keys(statusData),
+      axisLabel: { color: '#6b7280', fontSize: 13, fontWeight: 600 },
+      axisLine: { lineStyle: { color: '#e5e7eb' } },
+      axisTick: { show: false },
+    },
+    series: [{
+      type: 'bar',
+      data: Object.entries(statusData).map(([k, v]) => ({
+        value: v,
+        itemStyle: {
+          color: k === '2xx' ? COLORS.green : k === '3xx' ? COLORS.blue :
+                 k === '4xx' ? COLORS.yellow : COLORS.red,
+          borderRadius: [0, 4, 4, 0],
+        },
+      })),
+      barMaxWidth: 36,
+    }],
+  });
+
+});
+</script>
+{% endblock %}

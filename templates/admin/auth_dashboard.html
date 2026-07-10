@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+{{ block.super }}
+
+<div class="mb-6">
+  <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+    <canvas id="authChart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  new Chart(document.getElementById('authChart'), {
+    type: 'line',
+    data: {
+      labels: {{ labels|safe }},
+      datasets: [
+        { label: 'Login',  data: {{ login_data|safe }},  borderColor: '#10b981', tension: 0.3 },
+        { label: 'Logout', data: {{ logout_data|safe }}, borderColor: '#3b82f6', tension: 0.3 },
+        { label: 'Failed', data: {{ failed_data|safe }}, borderColor: '#ef4444', tension: 0.3 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
+</script>
+
+{% endblock %}

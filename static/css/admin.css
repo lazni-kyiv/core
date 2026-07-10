@@ -1,0 +1,6 @@
+.object-tools {
+display:flex;
+align-items: center;
+    flex-direction: row !important;
+    gap: 8px;
+}
