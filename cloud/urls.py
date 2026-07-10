@@ -11,7 +11,6 @@ from cloud.views import VueAppView
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── Patch admin URLs ──────────────────────────────────────────────────────
 _original_get_urls = admin.site.__class__.get_urls
 
 def _patched_get_urls(self):
@@ -23,7 +22,6 @@ def _patched_get_urls(self):
 
 admin.site.__class__.get_urls = _patched_get_urls
 
-# ── URL patterns ──────────────────────────────────────────────────────────
 urlpatterns = [
     path("tech/", admin.site.urls),
 
