@@ -394,7 +394,6 @@ class LogoutView(APIView):
 # =========================
 
 class MeView(APIView):
-    raise Exception("TEST")
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
