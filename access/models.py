@@ -127,8 +127,8 @@ class ActiveToken(models.Model):
     expires_at = models.DateTimeField()
     revoked = models.BooleanField(default=False)
 
-    user_agent = models.TextField(blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    # user_agent = models.TextField(blank=True)
+    # ip_address = models.GenericIPAddressField(null=True, blank=True)
 
     device_name = models.CharField(max_length=255, blank=True)
     browser = models.CharField(max_length=100, blank=True)
