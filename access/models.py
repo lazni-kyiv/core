@@ -20,6 +20,8 @@ def get_device_info(request):
         else f"{ua.os.family} {ua.browser.family}"
     )
 
+    print(ua)
+
     return {
         "user_agent": ua_string,
         "device_name": device_name,
@@ -174,8 +176,6 @@ class LoginLog(models.Model):
     )
     email = models.EmailField()
     action = models.CharField(max_length=10, choices=Action.choices)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
