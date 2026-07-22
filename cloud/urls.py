@@ -5,8 +5,8 @@ from pathlib import Path
 
 from drf_spectacular.views import SpectacularAPIView
 from .views import SiteAnalyticsView, BotAnalyticsView
-from access.views.dashboard import auth_dashboard
-from access.views.security_dashboard import security_dashboard
+from access.dashboard import auth_dashboard
+from access.security_dashboard import security_dashboard
 from cloud.views import VueAppView
 
 BASE_DIR = Path(__file__).resolve().parent.parent
