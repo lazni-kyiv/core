@@ -321,10 +321,10 @@ class ActiveTokenAdmin(ModelAdmin):
 
 @admin.register(LoginLog)
 class LoginLogAdmin(ModelAdmin):
-    list_display = ['email', 'action', 'ip_address', 'created_at']
+    list_display = ['email', 'action', 'created_at']
     list_filter = ['action', 'created_at']
-    search_fields = ['email', 'ip_address', 'user__email']
-    readonly_fields = ['user', 'email', 'action', 'ip_address', 'user_agent', 'created_at']
+    search_fields = ['email','user__email']
+    readonly_fields = ['user', 'email', 'action', 'created_at']
 
     def has_add_permission(self, request):
         return False
