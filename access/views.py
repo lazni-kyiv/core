@@ -342,22 +342,22 @@ class TokenRefreshView(APIView):
                 jti=str(new_access["jti"]),
                 token_type="access",
                 expires_at=now + timedelta(minutes=30),
-                ip_address=ip,
-                user_agent=device["user_agent"],
-                device_name=device["device_name"],
-                browser=device["browser"],
-                os=device["os"],
+                # ip_address=ip,
+                # user_agent=device["user_agent"],
+                # device_name=device["device_name"],
+                # browser=device["browser"],
+                # os=device["os"],
             )
             ActiveToken.objects.create(
                 user=user,
                 jti=str(new_refresh["jti"]),
                 token_type="refresh",
                 expires_at=now + timedelta(days=7),
-                ip_address=ip,
-                user_agent=device["user_agent"],
-                device_name=device["device_name"],
-                browser=device["browser"],
-                os=device["os"],
+                # ip_address=ip,
+                # user_agent=device["user_agent"],
+                # device_name=device["device_name"],
+                # browser=device["browser"],
+                # os=device["os"],
             )
 
         except (TokenError, InvalidToken):
@@ -394,8 +394,8 @@ class LogoutView(APIView):
                 user=user,
                 email=user.email,
                 action=LoginLog.Action.LOGOUT,
-                ip_address=get_client_ip(request),
-                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                # ip_address=get_client_ip(request),
+                # user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
         else:
@@ -404,8 +404,8 @@ class LogoutView(APIView):
                 user=None,
                 email="",
                 action=LoginLog.Action.LOGOUT,
-                ip_address=get_client_ip(request),
-                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                # ip_address=get_client_ip(request),
+                # user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
         response = Response({"detail": "logged out"})
