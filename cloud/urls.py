@@ -34,3 +34,6 @@ urlpatterns = [
     path("v1/stats/site/", SiteAnalyticsView.as_view()),
     path("v1/stats/bot/",  BotAnalyticsView.as_view()),
 ]
+
+
+# 
