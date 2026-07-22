@@ -397,11 +397,9 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print('hello')
         _maybe_cleanup_expired_tokens(request.user)
-        sessions = ActiveToken.objects.all(user=request.user)
-        print(sessions)
-        return Response(UserSerializer(request.user).data, sessions)
+      
+        return Response(UserSerializer(request.user).data)
 
 
 # =========================
