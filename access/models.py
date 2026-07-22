@@ -130,9 +130,9 @@ class ActiveToken(models.Model):
     # user_agent = models.TextField(blank=True)
     # ip_address = models.GenericIPAddressField(null=True, blank=True)
 
-    device_name = models.CharField(max_length=255, blank=True)
-    browser = models.CharField(max_length=100, blank=True)
-    os = models.CharField(max_length=100, blank=True)
+    # device_name = models.CharField(max_length=255, blank=True)
+    # browser = models.CharField(max_length=100, blank=True)
+    # os = models.CharField(max_length=100, blank=True)
 
 
     class Meta:
