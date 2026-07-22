@@ -250,13 +250,13 @@ class PinVerifyView(APIView):
 
         ActiveToken.objects.create(
             user=user,
-            jti=str(new_access["jti"]),
+            jti=str(access["jti"]),
             token_type="access",
             expires_at=now + timedelta(minutes=30),
         )
         ActiveToken.objects.create(
             user=user,
-            jti=str(new_refresh["jti"]),
+            jti=str(refresh["jti"]),
             token_type="refresh",
             expires_at=now + timedelta(days=7),
         )
