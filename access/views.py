@@ -395,7 +395,7 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def get(self, request):
         _maybe_cleanup_expired_tokens(request.user)
       

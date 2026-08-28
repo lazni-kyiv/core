@@ -1,7 +1,16 @@
 from django.urls import path
 
-from .views import get_dogovir_text,contracts
+from .views import ContractsView, DogovirTextView
+
 urlpatterns = [
-    path("template/", get_dogovir_text, name="dogovir-text"),
-    path("",      contracts,   name="dogovir-list"),
+    path(
+        "",
+        ContractsView.as_view(),
+        name="contracts",
+    ),
+    path(
+        "template/",
+        DogovirTextView.as_view(),
+        name="template",
+    ),
 ]
